@@ -1,2 +1,0 @@
-1
-node1 localhost 1235
