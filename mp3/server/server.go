@@ -73,40 +73,35 @@ func main() {
 
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
+	reader := bufio.NewReader(conn)
+	fmt.Println("test handleConnection")
+	
 	for {
-		reader := bufio.NewReader(conn)
-		for {
-			msg, _, err := reader.ReadLine()
-			if err != nil {
-				fmt.Println("Error reading from: ", err.Error())
-				return
-			}
-			processMessage(string(msg), conn)
+		msg, _, err := reader.ReadLine()
+		
+		if err != nil {
+			fmt.Println("Error reading from: ", err.Error())
+			return
 		}
+		fmt.Println(string(msg))
+		processMessage(string(msg), conn)
 	}
+	
 }
 
 func processMessage(msg string, conn net.Conn) {
 	message := strings.Split(msg, " ")
 	src := message[0]
 	msgType := message[1]
+	
 	fmt.Println("test msgType: ", msgType)
 	//if _, ok := clientMap[src]; !ok {
 	//	clientMap[src] = conn
 	//}
 
 	if msgType == "BEGIN" {
-		//if _, ok := transactionRecordMap[src]; ok {
-		//	abort(src)
-		//	reply(conn, "BEGIN ABORT")
-		//}
-		//record := &accountRecord{
-		//	"initialRecord",
-		//	-2,
-		//}
-		//newBuffered := []accountRecord{*record}
-		//transactionRecordMap[src] = newBuffered
 		reply(conn, "BEGIN-OK")
+		return
 
 	} else if msgType == "BEGIN-ABORT" {
 		abort(src)
@@ -119,13 +114,16 @@ func processMessage(msg string, conn net.Conn) {
 		} else {
 			reply(conn, "COMMIT-REPLY-ABORT")
 		}
+		return
 
 	} else if msgType == "COMMIT-DECISION-OK" {
 		delete(transactionRecordMap, src)
 		reply(conn, "COMMIT-OK")
+		return
 	} else if msgType == "COMMIT-DECISION-ABORT" {
 		abort(src)
 		reply(conn, "COMMIT-ABORTED")
+		return
 
 	} else if msgType == "ABORT" {
 		abort(src)
@@ -154,6 +152,7 @@ func processMessage(msg string, conn net.Conn) {
 			accountMap[accountName] = money
 		}
 		reply(conn, "OK")
+		return
 
 	} else if msgType == "WITHDRAW" {
 		accountName := message[2]
@@ -167,6 +166,7 @@ func processMessage(msg string, conn net.Conn) {
 			//abort(src)
 			reply(conn, "NOT-FOUND,-ABORTED")
 		}
+		return
 
 	} else if msgType == "BALANCE" {
 		accountName := message[2]
@@ -177,6 +177,7 @@ func processMessage(msg string, conn net.Conn) {
 			//abort(src)
 			reply(conn, "NOT-FOUND,-ABORTED")
 		}
+		return
 	}
 }
 
@@ -199,7 +200,8 @@ func abort(src string) {
 }
 
 func reply(conn net.Conn, msg string) {
-	conn.Write([]byte(msg))
+	message := msg + "\n"
+	conn.Write([]byte(message))
 }
 
 func isLegalTransactions(src string) bool {

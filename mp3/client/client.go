@@ -11,14 +11,6 @@ import (
 	"time"
 )
 
-type Node struct {
-	Name     string
-	Number   int
-	Hostname string
-	Port     string
-	Conn     net.Conn
-}
-
 var ClientNodeName string
 var ClientNodePort string
 var ClientIpAddress, _ = getIp()
@@ -58,21 +50,6 @@ func main() {
 		return
 	}
 
-	// if len(os.Args) >= 3 {
-	// 	f, err := os.Open(os.Args[3])
-	// 	if err != nil {
-	// 		fmt.Println("Can't read file:", os.Args[3])
-	// 		return
-	// 	}
-	// 	defer f.Close()
-	// 	inputReader := bufio.NewReader(f)
-	// 	go ioScanner(inputReader)
-	// } else {
-	// 	err := "no input file. trying to read from stdin"
-	// 	inputReader := bufio.NewReader(os.Stdin)
-	// 	go ioScanner(inputReader)
-	// 	fmt.Println("Info: ", err)
-	// }
 	inputReader := bufio.NewReader(os.Stdin)
 	go ioScanner(inputReader)
 
@@ -132,6 +109,18 @@ func readConfig(configFileName string) {
 	}
 }
 
+func tryDial(serverName string, hostname string, port string) {
+	for {
+		conn, sendingErr := net.Dial("tcp", hostname+":"+port)
+		if sendingErr != nil {
+			fmt.Println(sendingErr)
+			continue
+		}
+		ServerMap[serverName] = conn
+		return
+	}
+}
+
 func ioScanner(inputReader *bufio.Reader) {
 	for {
 		// read message from stdin
@@ -178,7 +167,7 @@ func processReply(msg string) {
 	} else if msg == "COMMIT-OK" {
 		commitFinalVote++
 		if commitFinalVote == ServerNum {
-			fmt.Println("COMMIT-OK")
+			fmt.Println("COMMIT OK")
 			madeDecision = true
 		}
 	} else if msg == "COMMIT-ABORTED" {
@@ -321,22 +310,11 @@ func sendToOtherServer(input string, conn net.Conn) {
 	}
 }
 
-func tryDial(serverName string, hostname string, port string) {
-	for {
-		conn, sendingErr := net.Dial("tcp", hostname+":"+port)
-		if sendingErr != nil {
-			fmt.Println(sendingErr)
-			continue
-		}
-		ServerMap[serverName] = conn
-
-		return
-	}
-}
 
 func send(input string, conn net.Conn) {
-	msg := ClientNodeName + " " + input
+	msg := ClientNodeName + " " + input + "\n"
 	conn.Write([]byte(msg))
+	fmt.Println("test send :" , msg)
 }
 
 func getIp() (string, error) {
