@@ -1,4 +1,4 @@
-package server
+package main
 
 import (
 	"bufio"
@@ -19,9 +19,10 @@ var accountMap map[string]int
 // key = client name. value = dangling transactions
 // delete the entry when a transaction is abort
 var transactionRecordMap map[string][]accountRecord
+
 type accountRecord struct {
 	accountName string
-	balance	int
+	balance     int
 }
 
 //var clientMap map[string]net.Conn
@@ -30,13 +31,11 @@ type accountRecord struct {
 //var readLockMap map[string]string
 //var writeLockMap map[string]string
 
-
 func main() {
 	accountMap = make(map[string]int)
 	transactionRecordMap = make(map[string][]accountRecord)
 	//  ./server C config.txt
 	if len(os.Args) > 1 {
-
 		localNodeName = os.Args[1]
 	}
 	fmt.Println("server branch:", localNodeName)
@@ -53,7 +52,7 @@ func main() {
 	address := ipAddress + ":" + localNodePort
 
 	listener, err := net.Listen("tcp", address)
-	fmt.Println("-----start listening-----", "branch: ", localNodeName,", local address:", address)
+	fmt.Println("-----start listening-----", "branch: ", localNodeName, ", local address:", address)
 	if err != nil {
 		fmt.Println("Error listening :", err.Error())
 		return
@@ -72,13 +71,12 @@ func main() {
 	}
 }
 
-
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	for {
 		reader := bufio.NewReader(conn)
-		for{
-			msg,_, err := reader.ReadLine()
+		for {
+			msg, _, err := reader.ReadLine()
 			if err != nil {
 				fmt.Println("Error reading from: ", err.Error())
 				return
@@ -88,11 +86,11 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func processMessage(msg string, conn net.Conn){
+func processMessage(msg string, conn net.Conn) {
 	message := strings.Split(msg, " ")
 	src := message[0]
 	msgType := message[1]
-
+	fmt.Println("test msgType: ", msgType)
 	//if _, ok := clientMap[src]; !ok {
 	//	clientMap[src] = conn
 	//}
@@ -108,43 +106,43 @@ func processMessage(msg string, conn net.Conn){
 		//}
 		//newBuffered := []accountRecord{*record}
 		//transactionRecordMap[src] = newBuffered
-		reply(conn, "BEGIN OK")
+		reply(conn, "BEGIN-OK")
 
-	} else if msgType == "BEGIN ABORT" {
+	} else if msgType == "BEGIN-ABORT" {
 		abort(src)
-		reply(conn, "BEGIN ABORTED")
+		reply(conn, "BEGIN-ABORTED")
 		return
 
 	} else if msgType == "COMMIT" {
-		if isLegalTransactions(src){
-			reply(conn, "COMMIT REPLY OK")
+		if isLegalTransactions(src) {
+			reply(conn, "COMMIT-REPLY-OK")
 		} else {
-			reply(conn, "COMMIT REPLY ABORT")
+			reply(conn, "COMMIT-REPLY-ABORT")
 		}
 
-	} else if msgType == "COMMIT DECISION OK" {
+	} else if msgType == "COMMIT-DECISION-OK" {
 		delete(transactionRecordMap, src)
-		reply(conn, "COMMIT OK")
-	} else if msgType == "COMMIT DECISION ABORT" {
+		reply(conn, "COMMIT-OK")
+	} else if msgType == "COMMIT-DECISION-ABORT" {
 		abort(src)
-		reply(conn, "COMMIT ABORTED")
+		reply(conn, "COMMIT-ABORTED")
 
-	} else if msgType == "ABORT"{
+	} else if msgType == "ABORT" {
 		abort(src)
 		reply(conn, "ABORTED")
 		return
-	} else if msgType == "TRANSACTION ABORT"{
+	} else if msgType == "TRANSACTION-ABORT" {
 		abort(src)
-		reply(conn, "TRANSACTION ABORTED")
+		reply(conn, "TRANSACTION-ABORTED")
 		return
 	}
 
 	BranchAccountName := message[2]
-	if !strings.HasPrefix(BranchAccountName, localNodeName){
+	if !strings.HasPrefix(BranchAccountName, localNodeName) {
 		return
 	}
 
-	if msgType == "DEPOSIT"{
+	if msgType == "DEPOSIT" {
 		accountName := message[2]
 		m := message[3]
 		money, _ := strconv.Atoi(m)
@@ -157,7 +155,7 @@ func processMessage(msg string, conn net.Conn){
 		}
 		reply(conn, "OK")
 
-	} else if msgType == "WITHDRAW"{
+	} else if msgType == "WITHDRAW" {
 		accountName := message[2]
 		m := message[3]
 		money, _ := strconv.Atoi(m)
@@ -167,28 +165,28 @@ func processMessage(msg string, conn net.Conn){
 			reply(conn, "OK")
 		} else {
 			//abort(src)
-			reply(conn, "NOT FOUND, ABORTED")
+			reply(conn, "NOT-FOUND,-ABORTED")
 		}
 
-	} else if msgType == "BALANCE"{
+	} else if msgType == "BALANCE" {
 		accountName := message[2]
 		if val, ok := accountMap[accountName]; ok {
 			re := accountName + " = " + strconv.Itoa(val)
 			reply(conn, re)
 		} else {
 			//abort(src)
-			reply(conn, "NOT FOUND, ABORTED")
+			reply(conn, "NOT-FOUND,-ABORTED")
 		}
 	}
 }
 
-func abort(src string){
+func abort(src string) {
 	if _, ok := transactionRecordMap[src]; !ok {
 		return
 	}
 
-	for _,record := range transactionRecordMap[src] {
-		if record.balance == -2{
+	for _, record := range transactionRecordMap[src] {
+		if record.balance == -2 {
 			continue
 		}
 		if record.balance == -1 {
@@ -204,25 +202,25 @@ func reply(conn net.Conn, msg string) {
 	conn.Write([]byte(msg))
 }
 
-func isLegalTransactions(src string) bool{
+func isLegalTransactions(src string) bool {
 	if _, ok := transactionRecordMap[src]; !ok {
 		return true
 	}
 
-	for _,record := range transactionRecordMap[src] {
-		if record.balance == -2{
+	for _, record := range transactionRecordMap[src] {
+		if record.balance == -2 {
 			continue
 		}
-		if accountMap[record.accountName] < 0{
+		if accountMap[record.accountName] < 0 {
 			return false
 		}
 	}
 	return true
 }
 
-func writeTransaction(src string, accountName string){
+func writeTransaction(src string, accountName string) {
 	if buffered, ok := transactionRecordMap[src]; ok {
-		if containsAccount(buffered, accountName){
+		if containsAccount(buffered, accountName) {
 			return
 		}
 		var record *accountRecord
@@ -278,7 +276,7 @@ func readConfig(configFileName string) {
 
 		tempMessage := strings.Fields(nodeMessage)
 		branchName := tempMessage[0]
-		if branchName == localNodeName{
+		if branchName == localNodeName {
 			localNodePort = tempMessage[2]
 			fmt.Println("completed reading from config file, multicast group loaded successfully")
 			configFile.Close()

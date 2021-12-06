@@ -1,4 +1,4 @@
-package client
+package main
 
 import (
 	"bufio"
@@ -39,6 +39,7 @@ func main() {
 	ServerNum = 0
 	decisionVote = 0
 	madeDecision = false
+	ServerMap = make(map[string]net.Conn)
 	//	./client asdf config.txt
 	if len(os.Args) > 1 {
 		ClientNodeName = os.Args[1]
@@ -47,7 +48,7 @@ func main() {
 	if len(os.Args) > 2 {
 		configFileName = os.Args[2]
 		readConfig(configFileName)
-		for len(ServerMap) < ServerNum{
+		for len(ServerMap) < ServerNum {
 			d, _ := time.ParseDuration("0.05s")
 			time.Sleep(d)
 		}
@@ -57,42 +58,53 @@ func main() {
 		return
 	}
 
-	if len(os.Args) > 3 {
-		f, err := os.Open( os.Args[3])
-		if err != nil {
-			fmt.Println("Can't read file:", os.Args[3])
-			return
-		}
-		defer f.Close()
-		inputReader := bufio.NewReader(f)
-		go ioScanner(inputReader)
-	} else {
-		err := "no input file. trying to read form stdin"
-		inputReader := bufio.NewReader(os.Stdin)
-		go ioScanner(inputReader)
-		fmt.Println("Info: ", err)
-	}
+	// if len(os.Args) >= 3 {
+	// 	f, err := os.Open(os.Args[3])
+	// 	if err != nil {
+	// 		fmt.Println("Can't read file:", os.Args[3])
+	// 		return
+	// 	}
+	// 	defer f.Close()
+	// 	inputReader := bufio.NewReader(f)
+	// 	go ioScanner(inputReader)
+	// } else {
+	// 	err := "no input file. trying to read from stdin"
+	// 	inputReader := bufio.NewReader(os.Stdin)
+	// 	go ioScanner(inputReader)
+	// 	fmt.Println("Info: ", err)
+	// }
+	inputReader := bufio.NewReader(os.Stdin)
+	go ioScanner(inputReader)
 
-	address := ipAddress + ":" + localNodePort
+	// // address := ipAddress + ":" + localNodePort
+	// address := ipAddress + ":1111"
 
-	listener, err := net.Listen("tcp", address)
-	fmt.Println("-----start listening-----", "client: ", ClientNodeName,", local address:", address)
-	if err != nil {
-		fmt.Println("Error listening :", err.Error())
-		return
-	}
+	// listener, err := net.Listen("tcp", address)
+	// fmt.Println("-----start listening-----", "client: ", ClientNodeName, ", local address:", address)
+	// if err != nil {
+	// 	fmt.Println("Error listening :", err.Error())
+	// 	return
+	// }
 
-	// accept tcp connection from other nodes
+	// // accept tcp connection from other nodes
+	// for {
+	// 	fmt.Println("receiver")
+	// 	conn, listenErr := listener.Accept()
+	// 	if listenErr != nil {
+	// 		fmt.Println("error: accepting tcp connection:", listenErr.Error())
+	// 		return
+	// 	}
+	// 	fmt.Println("Connection accepted, remote address = ", conn.RemoteAddr())
+	// 	go handleConnection(conn)
+	// }
 	for {
-		fmt.Println("receiver")
-		conn, listenErr := listener.Accept()
-		if listenErr != nil {
-			fmt.Println("error: accepting tcp connection:", listenErr.Error())
-			return
+		if len(ServerMap) == ServerNum {
+			for _, v := range ServerMap {
+				go handleConnection(v)
+			}
 		}
-		fmt.Println("Connection accepted, remote address = ", conn.RemoteAddr())
-		go handleConnection(conn)
 	}
+
 }
 
 func readConfig(configFileName string) {
@@ -138,8 +150,8 @@ func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	for {
 		reader := bufio.NewReader(conn)
-		for{
-			msg,_, err := reader.ReadLine()
+		for {
+			msg, _, err := reader.ReadLine()
 			if err != nil {
 				fmt.Println("Error reading from: ", err.Error())
 				return
@@ -149,61 +161,59 @@ func handleConnection(conn net.Conn) {
 	}
 }
 
-func processReply(msg string){
-	if msg == "BEGIN OK" {
+func processReply(msg string) {
+	if msg == "BEGIN-OK" {
 		decisionVote++
 		if decisionVote == ServerNum {
 			madeDecision = true
 			fmt.Println("OK")
 		}
-	} else if msg == "BEGIN ABORT"{
+	} else if msg == "BEGIN-ABORT" {
 		decisionVote++
-		if decisionVote == ServerNum{
+		if decisionVote == ServerNum {
 			madeDecision = true
 			fmt.Println("ABORTED")
 		}
 
-
-	} else if msg == "COMMIT OK"{
+	} else if msg == "COMMIT-OK" {
 		commitFinalVote++
-		if commitFinalVote == ServerNum{
-			fmt.Println("COMMIT OK")
+		if commitFinalVote == ServerNum {
+			fmt.Println("COMMIT-OK")
 			madeDecision = true
 		}
-	} else if msg == "COMMIT ABORTED"{
+	} else if msg == "COMMIT-ABORTED" {
 		commitFinalVote++
-		if commitFinalVote == ServerNum{
+		if commitFinalVote == ServerNum {
 			fmt.Println("ABORTED")
 			madeDecision = true
 		}
-	} else if msg == "COMMIT REPLY ABORT" {
+	} else if msg == "COMMIT-REPLY-ABORT" {
 		decisionVote = -1
 		commitFinalVote = 0
-		sendToAllServer("COMMIT DECISION ABORT")
-	} else if msg == "COMMIT REPLY OK"{
+		sendToAllServer("COMMIT-DECISION-ABORT")
+	} else if msg == "COMMIT-REPLY-OK" {
 		if decisionVote != -1 {
 			decisionVote++
 		}
-		if decisionVote == ServerNum{
+		if decisionVote == ServerNum {
 			commitFinalVote = 0
-			sendToAllServer("COMMIT DECISION OK")
+			sendToAllServer("COMMIT-DECISION-OK")
 		}
 
-
-	} else if msg == "NOT FOUND, ABORTED"{
+	} else if msg == "NOT-FOUND,-ABORTED" {
 		decisionVote = 0
-		sendToAllServer("TRANSACTION ABORT")
-	} else if msg == "TRANSACTION ABORTED"{
+		sendToAllServer("TRANSACTION-ABORT")
+	} else if msg == "TRANSACTION-ABORTED" {
 		decisionVote++
-		if decisionVote == ServerNum{
-			fmt.Println("NOT FOUND, ABORTED")
+		if decisionVote == ServerNum {
+			fmt.Println("NOT-FOUND,-ABORTED")
 			madeDecision = true
 			beginStatus = false
 		}
 
-	} else if msg == "ABORTED"{
+	} else if msg == "ABORTED" {
 		decisionVote++
-		if decisionVote == ServerNum{
+		if decisionVote == ServerNum {
 			madeDecision = true
 			fmt.Println("ABORTED")
 		}
@@ -213,27 +223,26 @@ func processReply(msg string){
 	}
 }
 
-
-
-func processInput(msg string){
+func processInput(msg string) {
 	message := strings.Split(msg, " ")
 	msgType := message[0]
 	madeDecision = false
 	decisionVote = 0
+	fmt.Println("test msgType: ", msgType)
 
-	if msgType == "BEGIN"{
-		if beginStatus == false{
+	if msgType == "BEGIN" {
+		if beginStatus == false {
 			sendToAllServer("BEGIN")
-			for{
-				if madeDecision{
+			for {
+				if madeDecision {
 					break
 				}
 			}
 			beginStatus = true
 		} else {
-			sendToAllServer("BEGIN ABORT")
-			for{
-				if madeDecision{
+			sendToAllServer("BEGIN-ABORT")
+			for {
+				if madeDecision {
 					break
 				}
 			}
@@ -244,10 +253,10 @@ func processInput(msg string){
 		return
 	}
 
-	if msgType == "ABORT"{
+	if msgType == "ABORT" {
 		sendToAllServer("ABORT")
-		for{
-			if madeDecision{
+		for {
+			if madeDecision {
 				break
 			}
 		}
@@ -255,10 +264,10 @@ func processInput(msg string){
 		return
 	}
 
-	if msgType == "COMMIT"{
+	if msgType == "COMMIT" {
 		sendToAllServer("COMMIT")
-		for{
-			if madeDecision{
+		for {
+			if madeDecision {
 				break
 			}
 		}
@@ -270,29 +279,29 @@ func processInput(msg string){
 	dest := strings.Split(message[1], ".")
 	server := dest[0]
 
-	if msgType == "BALANCE"{
+	if msgType == "BALANCE" {
 		decisionVote = 0
 		send(msg, ServerMap[server])
-		for{
-			if madeDecision{
+		for {
+			if madeDecision {
 				break
 			}
 		}
 		return
 	}
-	if msgType == "DEPOSIT"{
+	if msgType == "DEPOSIT" {
 		send(msg, ServerMap[server])
-		for{
-			if madeDecision{
+		for {
+			if madeDecision {
 				break
 			}
 		}
 		return
 	}
-	if msgType == "WITHDRAW"{
+	if msgType == "WITHDRAW" {
 		send(msg, ServerMap[server])
-		for{
-			if madeDecision{
+		for {
+			if madeDecision {
 				break
 			}
 		}
@@ -301,31 +310,33 @@ func processInput(msg string){
 }
 
 func sendToAllServer(input string) {
-	for _,v := range ServerMap {
+	for _, v := range ServerMap {
 		send(input, v)
 	}
 }
 
 func sendToOtherServer(input string, conn net.Conn) {
-	for _,v := range ServerMap {
+	for _, v := range ServerMap {
 		send(input, v)
 	}
 }
 
-func tryDial(serverName string,  hostname string, port string) {
-	for{
+func tryDial(serverName string, hostname string, port string) {
+	for {
 		conn, sendingErr := net.Dial("tcp", hostname+":"+port)
 		if sendingErr != nil {
 			fmt.Println(sendingErr)
 			continue
 		}
 		ServerMap[serverName] = conn
+
 		return
 	}
 }
 
 func send(input string, conn net.Conn) {
-	conn.Write([]byte(input))
+	msg := ClientNodeName + " " + input
+	conn.Write([]byte(msg))
 }
 
 func getIp() (string, error) {
