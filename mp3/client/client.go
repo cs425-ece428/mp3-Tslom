@@ -197,7 +197,7 @@ func processReply(msg string) {
 		if decisionVote == ServerNum {
 			fmt.Println("NOT FOUND, ABORTED")
 			madeDecision = true
-			// beginStatus = false
+			beginStatus = false
 		}
 
 	} else if msg == "ABORTED" {

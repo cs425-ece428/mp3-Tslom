@@ -27,13 +27,16 @@ type accountRecord struct {
 
 //var clientMap map[string]net.Conn
 
-////TODO for isolation, key = account name , val = lock name - empty : no lock;
-//var readLockMap map[string]string
-//var writeLockMap map[string]string
+// TODO for isolation, key = account name , val = lock name - empty : no lock;
+var readLockMap map[string]string
+var writeLockMap map[string]string
 
 func main() {
 	accountMap = make(map[string]int)
 	transactionRecordMap = make(map[string][]accountRecord)
+	readLockMap = make(map[string]string)
+	writeLockMap = make(map[string]string)
+
 	//  ./server C config.txt
 	if len(os.Args) > 1 {
 		localNodeName = os.Args[1]
