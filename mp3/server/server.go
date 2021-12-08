@@ -9,6 +9,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var localNodeName string
@@ -27,15 +28,18 @@ type accountRecord struct {
 
 //var clientMap map[string]net.Conn
 
-// TODO for isolation, key = account name , val = lock name - empty : no lock;
-var readLockMap map[string]string
+// TODO for isolation, key = account name , val = client name - empty : no lock;
+var readLockMap map[string][]string
 var writeLockMap map[string]string
+
+// var bufferedTransactionMap map[string][]string
 
 func main() {
 	accountMap = make(map[string]int)
 	transactionRecordMap = make(map[string][]accountRecord)
-	readLockMap = make(map[string]string)
+	readLockMap = make(map[string][]string)
 	writeLockMap = make(map[string]string)
+	// bufferedTransactionMap = make(map[string][]string)
 
 	//  ./server C config.txt
 	if len(os.Args) > 1 {
@@ -121,19 +125,23 @@ func processMessage(msg string, conn net.Conn) {
 
 	} else if msgType == "COMMIT-DECISION-OK" {
 		delete(transactionRecordMap, src)
+		releaseLock(src)
 		reply(conn, "COMMIT-OK")
 		return
 	} else if msgType == "COMMIT-DECISION-ABORT" {
 		abort(src)
+		releaseLock(src)
 		reply(conn, "COMMIT-ABORTED")
 		return
 
 	} else if msgType == "ABORT" {
 		abort(src)
+		releaseLock(src)
 		reply(conn, "ABORTED")
 		return
 	} else if msgType == "TRANSACTION-ABORT" {
 		abort(src)
+		releaseLock(src)
 		reply(conn, "TRANSACTION-ABORTED")
 		return
 	}
@@ -147,6 +155,7 @@ func processMessage(msg string, conn net.Conn) {
 		accountName := message[2]
 		m := message[3]
 		money, _ := strconv.Atoi(m)
+		addWriteLock(accountName, src)
 		writeTransaction(src, accountName)
 		if val, ok := accountMap[accountName]; ok {
 			accountMap[accountName] = money + val
@@ -161,6 +170,7 @@ func processMessage(msg string, conn net.Conn) {
 		accountName := message[2]
 		m := message[3]
 		money, _ := strconv.Atoi(m)
+		addReadLock(accountName, src)
 		if val, ok := accountMap[accountName]; ok {
 			writeTransaction(src, accountName)
 			accountMap[accountName] = val - money
@@ -174,6 +184,7 @@ func processMessage(msg string, conn net.Conn) {
 
 	} else if msgType == "BALANCE" {
 		accountName := message[2]
+		addReadLock(accountName, src)
 		if val, ok := accountMap[accountName]; ok {
 			re := accountName + " = " + strconv.Itoa(val)
 			reply(conn, re)
@@ -322,4 +333,66 @@ func containsAccount(s []accountRecord, e string) bool {
 		}
 	}
 	return false
+}
+
+func isContainString(items []string, item string) int {
+	for i, eachItem := range items {
+		if eachItem == item {
+			return i
+		}
+	}
+	return -1
+}
+
+func addReadLock(accountName string, clientName string) {
+	for {
+		if _, ok := writeLockMap[accountName]; !ok {
+			if _, ok := readLockMap[accountName]; !ok {
+				readLockMap[accountName] = make([]string, 0)
+				readLockMap[accountName] = append(readLockMap[accountName], clientName)
+				return
+			} else if isContainString(readLockMap[accountName], clientName) != -1 {
+				return
+			} else {
+				readLockMap[accountName] = append(readLockMap[accountName], clientName)
+				return
+			}
+		} else if writeLockMap[accountName] == clientName {
+			return
+		}
+
+		time.Sleep(time.Millisecond * 100)
+	}
+}
+
+func addWriteLock(accountName string, clientName string) {
+	for {
+		if _, ok := writeLockMap[accountName]; !ok {
+			if _, ok := readLockMap[accountName]; !ok {
+				writeLockMap[accountName] = clientName
+				return
+			} else if len(readLockMap[accountName]) == 1 && isContainString(readLockMap[accountName], clientName) != -1 {
+				writeLockMap[accountName] = clientName
+				delete(readLockMap, accountName)
+				return
+			}
+		} else if writeLockMap[accountName] == clientName {
+			return
+		}
+		time.Sleep(time.Millisecond * 100)
+	}
+}
+
+func releaseLock(clientName string) {
+	for account, clientList := range readLockMap {
+		idx := isContainString(clientList, clientName)
+		if idx != -1 {
+			readLockMap[account] = append(readLockMap[account][:idx], readLockMap[account][(idx+1):]...)
+		}
+	}
+	for account, client := range writeLockMap {
+		if client == clientName {
+			delete(writeLockMap, account)
+		}
+	}
 }

@@ -53,27 +53,6 @@ func main() {
 	inputReader := bufio.NewReader(os.Stdin)
 	go ioScanner(inputReader)
 
-	// // address := ipAddress + ":" + localNodePort
-	// address := ipAddress + ":1111"
-
-	// listener, err := net.Listen("tcp", address)
-	// fmt.Println("-----start listening-----", "client: ", ClientNodeName, ", local address:", address)
-	// if err != nil {
-	// 	fmt.Println("Error listening :", err.Error())
-	// 	return
-	// }
-
-	// // accept tcp connection from other nodes
-	// for {
-	// 	fmt.Println("receiver")
-	// 	conn, listenErr := listener.Accept()
-	// 	if listenErr != nil {
-	// 		fmt.Println("error: accepting tcp connection:", listenErr.Error())
-	// 		return
-	// 	}
-	// 	fmt.Println("Connection accepted, remote address = ", conn.RemoteAddr())
-	// 	go handleConnection(conn)
-	// }
 	for {
 		if len(ServerMap) == ServerNum {
 			for _, v := range ServerMap {
@@ -220,7 +199,7 @@ func processInput(msg string) {
 	// fmt.Println("test msgType: ", msgType)
 
 	if msgType == "BEGIN" {
-		if beginStatus == false {
+		if !beginStatus {
 			sendToAllServer("BEGIN")
 			for {
 				if madeDecision {

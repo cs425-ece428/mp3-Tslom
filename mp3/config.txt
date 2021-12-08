@@ -1,3 +1,1 @@
 A fa21-cs425-g46-01.cs.illinois.edu 1234
-B fa21-cs425-g46-02.cs.illinois.edu 1234
-C fa21-cs425-g46-03.cs.illinois.edu 1234
