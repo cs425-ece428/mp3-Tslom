@@ -74,11 +74,11 @@ func main() {
 func handleConnection(conn net.Conn) {
 	defer conn.Close()
 	reader := bufio.NewReader(conn)
-	fmt.Println("test handleConnection")
-	
+	// fmt.Println("test handleConnection")
+
 	for {
 		msg, _, err := reader.ReadLine()
-		
+
 		if err != nil {
 			fmt.Println("Error reading from: ", err.Error())
 			return
@@ -86,15 +86,15 @@ func handleConnection(conn net.Conn) {
 		fmt.Println(string(msg))
 		processMessage(string(msg), conn)
 	}
-	
+
 }
 
 func processMessage(msg string, conn net.Conn) {
 	message := strings.Split(msg, " ")
 	src := message[0]
 	msgType := message[1]
-	
-	fmt.Println("test msgType: ", msgType)
+
+	// fmt.Println("test msgType: ", msgType)
 	//if _, ok := clientMap[src]; !ok {
 	//	clientMap[src] = conn
 	//}
@@ -147,10 +147,10 @@ func processMessage(msg string, conn net.Conn) {
 		writeTransaction(src, accountName)
 		if val, ok := accountMap[accountName]; ok {
 			accountMap[accountName] = money + val
-
 		} else {
 			accountMap[accountName] = money
 		}
+		// fmt.Println("test DEPOSIT accountMap[accountName]: ", accountMap[accountName])
 		reply(conn, "OK")
 		return
 
@@ -160,7 +160,8 @@ func processMessage(msg string, conn net.Conn) {
 		money, _ := strconv.Atoi(m)
 		if val, ok := accountMap[accountName]; ok {
 			writeTransaction(src, accountName)
-			accountMap[accountName] = money - val
+			accountMap[accountName] = val - money
+			// fmt.Println("test WITHDRAW accountMap[accountName]: ", accountMap[accountName])
 			reply(conn, "OK")
 		} else {
 			//abort(src)
@@ -213,6 +214,7 @@ func isLegalTransactions(src string) bool {
 		if record.balance == -2 {
 			continue
 		}
+		// fmt.Println("test accountMap[record.accountName]: ", accountMap[record.accountName])
 		if accountMap[record.accountName] < 0 {
 			return false
 		}

@@ -195,9 +195,9 @@ func processReply(msg string) {
 	} else if msg == "TRANSACTION-ABORTED" {
 		decisionVote++
 		if decisionVote == ServerNum {
-			fmt.Println("NOT-FOUND,-ABORTED")
+			fmt.Println("NOT FOUND, ABORTED")
 			madeDecision = true
-			beginStatus = false
+			// beginStatus = false
 		}
 
 	} else if msg == "ABORTED" {
@@ -217,7 +217,7 @@ func processInput(msg string) {
 	msgType := message[0]
 	madeDecision = false
 	decisionVote = 0
-	fmt.Println("test msgType: ", msgType)
+	// fmt.Println("test msgType: ", msgType)
 
 	if msgType == "BEGIN" {
 		if beginStatus == false {
@@ -310,11 +310,10 @@ func sendToOtherServer(input string, conn net.Conn) {
 	}
 }
 
-
 func send(input string, conn net.Conn) {
 	msg := ClientNodeName + " " + input + "\n"
 	conn.Write([]byte(msg))
-	fmt.Println("test send :" , msg)
+	// fmt.Println("test send :", msg)
 }
 
 func getIp() (string, error) {
