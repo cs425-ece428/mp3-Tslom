@@ -92,6 +92,7 @@ func handleConnection(conn net.Conn) {
 		}
 		fmt.Println(string(msg))
 		processMessage(string(msg), conn)
+		// time.Sleep(time.Second * 3)
 	}
 
 }
@@ -348,8 +349,8 @@ func addReadLock(accountName string, clientName string) {
 	for {
 		if _, ok := writeLockMap[accountName]; !ok {
 			if _, ok := readLockMap[accountName]; !ok {
-				readLockMap[accountName] = make([]string, 0)
-				readLockMap[accountName] = append(readLockMap[accountName], clientName)
+				newClientArr := []string{clientName}
+				readLockMap[accountName] = newClientArr
 				return
 			} else if isContainString(readLockMap[accountName], clientName) != -1 {
 				return
