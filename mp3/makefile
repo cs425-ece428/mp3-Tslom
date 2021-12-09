@@ -1,5 +1,5 @@
 build:
-	go build -o client client.go
-	go build -o server server.go
+	go build -o client ./Client/client.go
+	go build -o server ./Server/server.go
 	chmod +x server
 	chmod +x client
