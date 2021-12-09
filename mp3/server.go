@@ -92,7 +92,7 @@ func handleConnection(conn net.Conn) {
 		}
 		fmt.Println(string(msg))
 		processMessage(string(msg), conn)
-		// time.Sleep(time.Second * 3)
+		time.Sleep(time.Second * 1)
 	}
 
 }
